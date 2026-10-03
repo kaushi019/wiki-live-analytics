@@ -1,0 +1,6 @@
+sseclient-py
+requests
+polars
+psycopg2-binary
+river
+streamlit

@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  wiki-db:
+    image: postgres:16-alpine # Using a lightweight, stable open-source image
+    container_name: wiki-postgres-container
+    environment:
+      POSTGRES_DB: wiki_stream_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: wiki_live_pass_019
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persists data even if container stops
+    restart: always
+
+volumes:
+  postgres_data: # Open-source named volume for data safety
