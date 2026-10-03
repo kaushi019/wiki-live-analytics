@@ -34,6 +34,7 @@ class DBManager:
             is_bot BOOLEAN,
             bytes_changed INT,
             edit_type VARCHAR(20),
+            anomaly_score FLOAT DEFAULT 0.0,
             ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """
@@ -41,6 +42,14 @@ class DBManager:
         try:
             with conn.cursor() as cursor:
                 cursor.execute(create_table_query)
+
+                # Safety check: If the table already existed from previous steps,
+                # explicitly add the column so PostgreSQL doesn't throw an error.
+                cursor.execute("""
+                    ALTER TABLE wikipedia_raw 
+                    ADD COLUMN IF NOT EXISTS anomaly_score FLOAT DEFAULT 0.0;
+                """)
+
             conn.commit()
             print("✅ Database initialized successfully: 'wikipedia_raw' table is ready.")
         except Exception as e:
@@ -56,12 +65,12 @@ class DBManager:
             return
 
         insert_query = """
-        INSERT INTO wikipedia_raw (timestamp, page_title, user_name, is_bot, bytes_changed, edit_type)
+        INSERT INTO wikipedia_raw (timestamp, page_title, user_name, is_bot, bytes_changed, edit_type, anomaly_score)
         VALUES %s;
         """
         
         records_to_insert = [
-            (row['timestamp'], row['page_title'], row['user_name'], row['is_bot'], row['bytes_changed'], row['edit_type']) 
+            (row['timestamp'], row['page_title'], row['user_name'], row['is_bot'], row['bytes_changed'], row['edit_type'],  row['anomaly_score']) 
             for row in batch_data
         ]
 
@@ -70,7 +79,7 @@ class DBManager:
             with conn.cursor() as cursor:
                 execute_values(cursor, insert_query, records_to_insert)
             conn.commit()
-            print(f"💾 Successfully flushed batch of {len(batch_data)} records to the database.")
+            print(f"💾 Successfully flushed batch of {len(batch_data)} records with Anamoly Scores to the database.")
         except Exception as e:
             conn.rollback()
             print(f"❌ Failed to insert batch into database: {e}")

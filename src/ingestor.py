@@ -4,12 +4,14 @@ import time
 import requests
 import sseclient
 from src.db_manager import DBManager
+from src.ml_model import WikiAnomalyDetector
 from src.transformer import WikiTransformer
 
 class WikiIngestor:
     def __init__(self):
         self.db = DBManager()
         self.transformer = WikiTransformer()
+        self.detector = WikiAnomalyDetector()      # Initialize the River AI engine
         self.batch = []
         self.last_flush_time = time.time()
 
@@ -70,18 +72,29 @@ class WikiIngestor:
                 length_old = change.get("length", {}).get("old") or 0
                 length_new = change.get("length", {}).get("new") or 0
                 bytes_changed = abs(length_new - length_old)
+                is_bot = change.get("bot", False)
+
+                # 🤖 PASS TO STREAMING ML ENGINE
+                # Calculate the anomaly score on the fly!
+                anomaly_score = self.detector.learn_and_score(bytes_changed, is_bot)
 
                 record = {
                     "timestamp": str(change.get("timestamp")),
                     "page_title": change.get("title"),
                     "user_name": change.get("user"),
-                    "is_bot": change.get("bot", False),
+                    "is_bot": is_bot,
                     "bytes_changed": int(bytes_changed),
-                    "edit_type": change.get("type", "unknown")
+                    "edit_type": change.get("type", "unknown"),
+                    "anomaly_score": float(anomaly_score)
                 }
                 
                 self.batch.append(record)
-                print(f"📥 Buffered edit: '{record['page_title']}' by {record['user_name']} ({len(self.batch)}/{batch_size})")
+
+                # Visual flag in the logs if the edit looks suspicious
+                if anomaly_score > 0.75:
+                    print(f"⚠️ ANOMALY DETECTED [{anomaly_score:.2f}] | '{record['page_title']}' edited by {record['user_name']} ({bytes_changed} bytes)")
+                else:
+                    print(f"📥 Buffered edit: '{record['page_title']}' by {record['user_name']} ({len(self.batch)}/{batch_size})")
                 
                 if len(self.batch) >= batch_size:
                     self._flush_batch()
