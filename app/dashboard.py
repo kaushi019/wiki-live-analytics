@@ -71,7 +71,7 @@ while True:
                 data=chart_data.to_pandas(),
                 x="ingested_at",
                 y="anomaly_score",
-                use_container_width=True
+                width="stretch"
             )
             
         # --- SECTION C: THE ALERTING PANEL DATAGRID TABLE ---
@@ -87,7 +87,7 @@ while True:
                 # Format dataframe table visually inside the frontend UI window canvas 
                 st.dataframe(
                     anomalies_df.to_pandas(),
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True
                 )
                 

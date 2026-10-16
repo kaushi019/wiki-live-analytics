@@ -2,6 +2,7 @@
 import os
 import sys
 import json
+import time
 import requests
 import sseclient
 
@@ -10,9 +11,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from kafka import KafkaProducer
 
-WIKI_STREAM_URL = "https://stream.wikimedia.org/v2/stream/recentchange" 
-KAFKA_BROKER = "localhost:9092"
+# 📡 Fixed Core Configurations
+WIKI_STREAM_URL = "https://stream.wikimedia.org/v2/stream/recentchange"
 KAFKA_TOPIC = "wikipedia-edits"
+
+# 🐳 Dynamic Cluster Environment Resolution
+# Defaults to localhost for local testing, wraps to internal networking inside Docker
+KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
 
 def run_producer():
     print("====================================================")
@@ -20,16 +25,21 @@ def run_producer():
     print("====================================================")
     
     print(f"📦 Connecting to Kafka Broker at: {KAFKA_BROKER}...")
-    try:
-        producer = KafkaProducer(
-            bootstrap_servers=[KAFKA_BROKER],
-            value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-            connection_timeout_ms=10000
-        )
-        print("✅ Successfully connected to Kafka Broker!")
-    except Exception as e:
-        print(f"❌ KAFKA CONNECTION FAILED: {e}")
-        return
+    
+    # 🔄 Dynamic retry loops to handle Kafka container initialization warm-ups safely
+    while True:
+        try:
+            producer = KafkaProducer(
+                bootstrap_servers=[KAFKA_BROKER],
+                value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+                connection_timeout_ms=5000,
+                request_timeout_ms=5000
+            )
+            print("✅ Successfully connected to Kafka Broker!")
+            break  # Escape retry loop when network handshake passes
+        except Exception as e:
+            print(f"⚠️ Kafka Broker not fully ready yet ({e}). Re-trying in 3 seconds...")
+            time.sleep(3)
 
     headers = {"User-Agent": "WikiKafkaProducerPipeline/2.0 (student@domain.com)"}
     print(f"\n📡 Establishing live API tunnel to: {WIKI_STREAM_URL}")

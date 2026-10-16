@@ -43,7 +43,7 @@ while True:
             st.subheader("🔥 Top 50 Most Heavily Modified Pages Across Stream Duration")
             st.dataframe(
                 df_features.to_pandas(),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True
             )
             

@@ -12,10 +12,11 @@ from src.db_manager import DBManager
 from src.transformer import WikiTransformer
 from src.ml_model import WikiAnomalyDetector
 
-KAFKA_BROKER = "localhost:9092"
+KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
 KAFKA_TOPIC = "wikipedia-edits"
 BATCH_SIZE = 20
 BATCH_TIMEOUT = 5.0
+
 
 def run_consumer():
     print("====================================================")
@@ -31,21 +32,29 @@ def run_consumer():
     detector = WikiAnomalyDetector()
     
     print(f"📥 Connecting Kafka Consumer to Topic: '{KAFKA_TOPIC}'...")
-    try:
-        consumer = KafkaConsumer(
-            KAFKA_TOPIC,
-            bootstrap_servers=[KAFKA_BROKER],
-            auto_offset_reset='latest',
-            value_deserializer=lambda m: json.loads(m.decode('utf-8'))
-        )
-        print("✅ Consumer linked to Kafka cluster broker successfully!")
-    except Exception as e:
-        print(f"❌ CONSUMER HUB LINK FAILED: {e}")
-        return
-        
+    
+    # 🔄 Dynamic retry loops to handle Kafka clustering warm-ups safely
+    while True:
+        try:
+            consumer = KafkaConsumer(
+                KAFKA_TOPIC,
+                bootstrap_servers=[KAFKA_BROKER],
+                auto_offset_reset='latest',
+                value_deserializer=lambda m: json.loads(m.decode('utf-8')),
+                request_timeout_ms=5000
+            )
+            print("✅ Consumer linked to Kafka cluster broker successfully!")
+            break # Escape the loop when the connection succeeds
+        except Exception as e:
+            print(f"⚠️ Kafka Broker not fully ready yet ({e}). Re-trying in 3 seconds...")
+            time.sleep(3)
+            
     batch = []
     last_flush_time = time.time()
     print("🎬 Awaiting incoming stream data from Kafka queue message channels...\n")
+    
+    # ... (Rest of the loop code stays exactly the same)
+
     
     try:
         for message in consumer:
