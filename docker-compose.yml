@@ -1,8 +1,9 @@
 version: '3.8'
 
 services:
+  # 🐘 PostgreSQL Storage Tier
   wiki-db:
-    image: postgres:16-alpine # Using a lightweight, stable open-source image
+    image: postgres:16-alpine
     container_name: wiki-postgres-container
     environment:
       POSTGRES_DB: wiki_stream_db
@@ -11,8 +12,32 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data # Persists data even if container stops
+      - postgres_data:/var/lib/postgresql/data
     restart: always
 
+  # 🐒 Zookeeper (Manages Kafka cluster states)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: wiki-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  # 📦 Apache Kafka Broker (Enterprise Message Queue Hub)
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: wiki-kafka-broker
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
 volumes:
-  postgres_data: # Open-source named volume for data safety
+  postgres_data:

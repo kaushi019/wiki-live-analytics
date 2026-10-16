@@ -4,3 +4,4 @@ polars
 psycopg2-binary
 river
 streamlit
+kafka-python-ng==2.2.2
