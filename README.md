@@ -1,4 +1,4 @@
-# 📡 Wikipedia Live Stream AI Anomaly Monitor
+# 📡 Wikipedia Live Stream AI Anomaly Monitor (Dockerized Kafka Stack)
 
 A production-grade, multi-tier enterprise data engineering streaming pipeline. This application captures live global English Wikipedia article logs via Server-Sent Events (SSE), brokers data payloads asynchronously inside **Apache Kafka queues**, applies incremental online anomaly detection algorithms with **River ML**, aggregates metrics in real time via **Polars DataFrames**, stores structured results inside **PostgreSQL**, and serves an interactive web monitoring dashboard with **Streamlit**.
 
@@ -9,17 +9,17 @@ A production-grade, multi-tier enterprise data engineering streaming pipeline. T
 wiki-live-analytics/
 │
 ├── app/
-│   ├── dashboard.py             # Main Page: Live Anomaly Stream Monitor
+│   ├── dashboard.py             # Main Page: Split-Screen Live Anomaly Monitor & SLA Incident Logs
 │   └── pages/
 │       ├── 1_Polars_Analytics.py # Page 2: Rolling metrics aggregates (NLP Intents)
-│       └── 2_Advanced_Insights.py# Page 3: Search Engine & Volatility Analytics
+│       └── 2_Advanced_Insights.py# Page 3: Search Engine & Volatility Analytics (With Autocomplete)
 │
 ├── src/
 │   ├── db_manager.py            # PostgreSQL schema integrations
 │   ├── transformer.py           # Polars business analytics calculations (Regex NLP)
 │   ├── ml_model.py              # River streaming anomaly engine logic (Risk Profiling)
-│   ├── kafka_producer.py        # Crash-proof event producer stream nodes
-│   └── kafka_consumer.py        # Synchronized AI evaluation ingestion processors
+│   ├── kafka_producer.py        # Crash-proof self-healing event producer stream nodes
+│   └── kafka_consumer.py        # Synchronized AI evaluation and SLA verification processors
 │
 ├── Dockerfile                   # Python container compiler blueprints
 ├── docker-compose.yml           # Unified infrastructure cluster map configuration
@@ -35,16 +35,17 @@ wiki-live-analytics/
 ### Stage 1: Data Ingestion Edge & Reconnection Loop (`src/kafka_producer.py`)
 *   **What it does:** Establishes a permanent, streaming chunked HTTP socket connection to the Wikimedia public EventStreams API (`/v2/stream/recentchange`).
 *   **How it works:** It handles continuous server-sent events, parses incoming JSON payloads, filters out non-mainspace data, and isolates English domain articles (`en.wikipedia.org`).
-*   **Self-Healing Resilience:** It features an infinite stream reconnection loop. If Wikipedia's public API prematurely drops the active chunk response (`Response ended prematurely`), the script flushes remaining buffers, waits 5 seconds, and automatically restores the tunnel without stopping the container.
+*   **Self-Healing Resilience:** Built with an infinite stream reconnection loop. If Wikipedia's public API prematurely drops the active chunk response (`Response ended prematurely`), the script flushes remaining buffers, waits 5 seconds, and automatically restores the tunnel without stopping the container.
 *   **The Decoupling Pattern:** Clean raw records are published immediately into an **Apache Kafka topic (`wikipedia-edits`)** acting as an asynchronous message queue.
 
 ### Stage 2: Asynchronous Distributed Buffering (`docker-compose.yml`)
 *   **What it does:** Orchestrates the infrastructure container nodes via **Apache Kafka** and **Zookeeper**.
 *   **How it works:** Kafka holds an on-disk, fault-tolerant messaging queue using dual-network listener topologies (`localhost:9092` for external inspection tools like DBeaver and `kafka:29092` for internal docker container routing). This decouples the network ingestion layer from the downstream computing layer.
 
-### Stage 3: Multi-Dimensional AI Inference Consumer (`src/kafka_consumer.py` & `src/ml_model.py`)
+### Stage 3: Multi-Dimensional AI Inference Consumer & SLA Tracker (`src/kafka_consumer.py` & `src/ml_model.py`)
 *   **What it does:** Consumes events from Kafka queues and computes real-time behavioral risk profiles.
 *   **How it works:** Records are evaluated by an incremental machine learning pipeline (**River's HalfSpaceTrees**). It solves a critical **Trust & Safety business problem** by extracting four dimensions on the fly: content size deviations (`bytes_changed`), automated flags (`is_bot`), content revision classifications (`is_minor`), and author experience levels (`user_edit_count`). 
+*   **Real-Time SLA Evaluation:** Before data flushing, the consumer evaluates every anomaly against an operational rule-based SLA threshold matrix to classify critical high-priority threats (e.g., matching low experience with large byte variations to spot sleeper accounts).
 *   **Batching Optimization:** It buffers processed rows and uses transactional micro-batches (`execute_values`) to write clean arrays to **PostgreSQL** every 20 records or 5 seconds.
 
 ### Stage 4: NLP Intent Categorization via Polars (`src/transformer.py`)
@@ -57,10 +58,10 @@ wiki-live-analytics/
 
 When you deploy the container cluster, your business intelligence monitoring interface serves three optimized web layouts at **`http://localhost:8501`**:
 
-### Page 1: Live Anomaly Stream Monitor (`app/dashboard.py`)
-*   **Business Purpose:** Real-time Operational Incident Monitoring & Critical Alerts.
-*   **Components:** High-level summary metric cards, a live timeline chart tracking River AI anomaly scores, and a high-alert datagrid displaying edits with an anomaly threshold score >0.75.
-*   **Value:** Surfaces immediate platform risk. It scales dynamically to catch extreme size modifications or rogue bot behavior as edits flow from Kafka into PostgreSQL.
+### Page 1: Live Anomaly Stream Monitor & SLA Incident Logs (`app/dashboard.py`)
+*   **Business Purpose:** Real-time Operational Incident Monitoring & Critical SLA Alerts.
+*   **Components:** High-level summary metric cards, a wide split-screen horizontal canvas hosting the live anomaly scores timeline on the left (60% width), and a non-scrolling, immediate-notice SLA Incident Log on the right (40% width).
+*   **Value:** Surfaces immediate platform risk without user friction. It provides operational visibility into active infrastructure threats by generating distinct warning banners (**Red for P1 Critical**, **Orange for P2 High**, and **Blue for P3 Medium**) right alongside the running line chart.
 
 ### Page 2: Polars Aggregations Analytics (`app/pages/1_Polars_Analytics.py`)
 *   **Business Purpose:** Automated Content Integrity Auditing & Intent Profiling.
@@ -70,7 +71,7 @@ When you deploy the container cluster, your business intelligence monitoring int
 ### Page 3: Advanced Business Insights & Search Console (`app/pages/2_Advanced_Insights.py`)
 *   **Business Purpose:** Granular Trust Profiling & Autocomplete Query Console.
 *   **Components:** A searchable autocomplete dropdown menu listing unique article titles, account type filters, minimum editor experience sliders, layered Altair charts displaying absolute tallies with exact count placeholders, and a risk scatter plot.
-*   **Value:** Pinpoints malicious behavior. Analysts can type keywords to autocomplete titles, audit bot-to-human activity volume, and visually analyze the risk hypothesis: *Are users with low system edit histories more likely to trigger high volatility anomaly flags?*
+*   **Value:** Pinpoints malicious behavior. Users can type keywords to autocomplete titles, audit bot-to-human activity volume, and visually analyze the risk hypothesis: *Are users with low system edit histories more likely to trigger high volatility anomaly flags?*
 
 ---
 
