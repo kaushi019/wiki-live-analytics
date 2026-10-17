@@ -11,15 +11,15 @@ wiki-live-analytics/
 ├── app/
 │   ├── dashboard.py             # Main Page: Live Anomaly Stream Monitor
 │   └── pages/
-│       ├── 1_Polars_Analytics.py # Page 2: Rolling metrics aggregates
-│       └── 2_Advanced_Insights.py# Page 3: Search Engine & Bot Analytics
+│       ├── 1_Polars_Analytics.py # Page 2: Rolling metrics aggregates (NLP Intents)
+│       └── 2_Advanced_Insights.py# Page 3: Search Engine & Volatility Analytics
 │
 ├── src/
 │   ├── db_manager.py            # PostgreSQL schema integrations
-│   ├── transformer.py           # Polars analytics calculations
-│   ├── ml_model.py              # River streaming anomaly engine logic
-│   ├── kafka_producer.py        # Event producer streaming pipeline nodes
-│   └── kafka_consumer.py        # Kafka AI evaluation ingestion processors
+│   ├── transformer.py           # Polars business analytics calculations (Regex NLP)
+│   ├── ml_model.py              # River streaming anomaly engine logic (Risk Profiling)
+│   ├── kafka_producer.py        # Crash-proof event producer stream nodes
+│   └── kafka_consumer.py        # Synchronized AI evaluation ingestion processors
 │
 ├── Dockerfile                   # Python container compiler blueprints
 ├── docker-compose.yml           # Unified infrastructure cluster map configuration
@@ -32,44 +32,45 @@ wiki-live-analytics/
 
 ## 🎓 Stage-by-Stage Technical Breakdown
 
-### Stage 1: Data Ingestion Edge (`src/kafka_producer.py`)
+### Stage 1: Data Ingestion Edge & Reconnection Loop (`src/kafka_producer.py`)
 *   **What it does:** Establishes a permanent, streaming chunked HTTP socket connection to the Wikimedia public EventStreams API (`/v2/stream/recentchange`).
-*   **How it works:** It acts as a lightweight network thread. It polls the server-sent events continually, parses the incoming JSON, filters out non-mainspace data, and isolates articles specific to the English platform domain (`en.wikipedia.org`).
-*   **The Decoupling Pattern:** Instead of writing directly to a database (which creates bottlenecks), it pushes the clean raw payloads straight into an **Apache Kafka topic (`wikipedia-edits`)** acting as a resilient distributed buffer.
+*   **How it works:** It handles continuous server-sent events, parses incoming JSON payloads, filters out non-mainspace data, and isolates English domain articles (`en.wikipedia.org`).
+*   **Self-Healing Resilience:** It features an infinite stream reconnection loop. If Wikipedia's public API prematurely drops the active chunk response (`Response ended prematurely`), the script flushes remaining buffers, waits 5 seconds, and automatically restores the tunnel without stopping the container.
+*   **The Decoupling Pattern:** Clean raw records are published immediately into an **Apache Kafka topic (`wikipedia-edits`)** acting as an asynchronous message queue.
 
 ### Stage 2: Asynchronous Distributed Buffering (`docker-compose.yml`)
-*   **What it does:** Orchestrates the infrastructure layers via **Apache Kafka** and **Zookeeper**.
-*   **How it works:** Kafka keeps an on-disk, highly fault-tolerant message queue. If the database crashes or undergoes maintenance, the producer keeps pouring logs safely into Kafka without dropping data. Once the downstream scripts recover, they pick up right where they left off.
+*   **What it does:** Orchestrates the infrastructure container nodes via **Apache Kafka** and **Zookeeper**.
+*   **How it works:** Kafka holds an on-disk, fault-tolerant messaging queue using dual-network listener topologies (`localhost:9092` for external inspection tools like DBeaver and `kafka:29092` for internal docker container routing). This decouples the network ingestion layer from the downstream computing layer.
 
-### Stage 3: AI Inference & Streaming Consumer (`src/kafka_consumer.py` & `src/ml_model.py`)
-*   **What it does:** Consumes events out of Kafka queues and applies live intelligence.
-*   **How it works:** It processes records through an incremental machine learning engine (**River's HalfSpaceTrees**). Unlike Scikit-Learn (which requires loading giant historical tables into memory to retrain), River scores data and updates its internal weights mathematically row-by-row on the fly. 
-*   **Batching Optimization:** It maps advanced dimensions (`edit_comment`, `is_minor`, `user_edit_count`), aggregates them into a local Python list buffer, and uses transactional micro-batches (`psycopg2.extras.execute_values`) to write to **PostgreSQL** every 20 records or 5 seconds.
+### Stage 3: Multi-Dimensional AI Inference Consumer (`src/kafka_consumer.py` & `src/ml_model.py`)
+*   **What it does:** Consumes events from Kafka queues and computes real-time behavioral risk profiles.
+*   **How it works:** Records are evaluated by an incremental machine learning pipeline (**River's HalfSpaceTrees**). It solves a critical **Trust & Safety business problem** by extracting four dimensions on the fly: content size deviations (`bytes_changed`), automated flags (`is_bot`), content revision classifications (`is_minor`), and author experience levels (`user_edit_count`). 
+*   **Batching Optimization:** It buffers processed rows and uses transactional micro-batches (`execute_values`) to write clean arrays to **PostgreSQL** every 20 records or 5 seconds.
 
-### Stage 4: Downstream Metrics Aggregation (`src/transformer.py`)
-*   **What it does:** Computes aggregated operational dimensions.
-*   **How it works:** Immediately after a database flush, this layer triggers a **Polars DataFrame** execution tree. Polars handles multi-threaded group-by aggregations in memory to figure out running stats (like distinct user counts and average size variations per page), then refreshes the `wikipedia_features` summary table.
+### Stage 4: NLP Intent Categorization via Polars (`src/transformer.py`)
+*   **What it does:** Solves **Product Operations Use Cases** via automated change-intent text classification.
+*   **How it works:** Immediately after a database flush, this layer spins up a multi-threaded **Polars DataFrame** execution tree. It utilizes regex parsing patterns over the `edit_comment` field to extract and categorize structural user intents (e.g., matching keywords to tally `typo_fixes_count` and `vandalism_reversals_count`), while tracking running averages of editor experience levels across active article targets.
 
 ---
 
 ## 🖥️ Streamlit Dashboard Page Explanations
 
-When you navigate to **`http://localhost:8501`**, your business intelligence monitoring interface serves three dedicated pages:
+When you deploy the container cluster, your business intelligence monitoring interface serves three optimized web layouts at **`http://localhost:8501`**:
 
 ### Page 1: Live Anomaly Stream Monitor (`app/dashboard.py`)
-*   **Business Purpose:** Real-time Threat Monitoring & System Alerts.
-*   **Visual Components:** High-level KPI cards (Total processed metrics, flag count totals, peak byte variations), a live updating timeline chart plotting River AI anomaly scores, and an instantaneous high-alert data grid.
-*   **Value:** Acts as an operational command center. Whenever an edit scores a high probability of vandalism or bot spam (>0.75 Anomaly Score), it surfaces immediately on the screen.
+*   **Business Purpose:** Real-time Operational Incident Monitoring & Critical Alerts.
+*   **Components:** High-level summary metric cards, a live timeline chart tracking River AI anomaly scores, and a high-alert datagrid displaying edits with an anomaly threshold score >0.75.
+*   **Value:** Surfaces immediate platform risk. It scales dynamically to catch extreme size modifications or rogue bot behavior as edits flow from Kafka into PostgreSQL.
 
 ### Page 2: Polars Aggregations Analytics (`app/pages/1_Polars_Analytics.py`)
-*   **Business Purpose:** Volatility Analytics & Trending Content Discovery.
-*   **Visual Components:** An interactive data grid highlighting the Top 50 most heavily modified articles across the entire stream runtime duration.
-*   **Value:** Summarizes high-volume platform activity. By ranking items by `total_edits` and `total_bytes_changed`, operations analysts can instantly spot breaking news events or pages currently under heavy discussion/edit wars.
+*   **Business Purpose:** Automated Content Integrity Auditing & Intent Profiling.
+*   **Components:** An interactive data grid detailing the Top 50 most heavily modified articles across the entire streaming lifecycle duration.
+*   **Value:** Evaluates platform moderation velocity. It exposes running counts of **✍️ Typo Fixes** and **🛡️ Vandalism Reversals** extracted by Polars NLP string matching, allowing teams to spot trending discussions and track editor experience histories.
 
 ### Page 3: Advanced Business Insights & Search Console (`app/pages/2_Advanced_Insights.py`)
-*   **Business Purpose:** Contextual Search, Bot Auditing, and Trust Profiling.
-*   **Visual Components:** A text-filtering input query bar, an account-type distribution dropdown, an experience threshold slider, structural volume allocation bar charts, and a scatter chart correlating account age against AI risk scores.
-*   **Value:** Solves complex data sleuthing problems. Analysts can search for intent keywords (e.g., "typo", "vand") inside the `edit_comment` column, isolate impacts caused specifically by bot infrastructure vs. humans, and visually test the risk hypothesis: *Are users with low edit histories more likely to trigger high anomaly scores?*
+*   **Business Purpose:** Granular Trust Profiling & Autocomplete Query Console.
+*   **Components:** A searchable autocomplete dropdown menu listing unique article titles, account type filters, minimum editor experience sliders, layered Altair charts displaying absolute tallies with exact count placeholders, and a risk scatter plot.
+*   **Value:** Pinpoints malicious behavior. Analysts can type keywords to autocomplete titles, audit bot-to-human activity volume, and visually analyze the risk hypothesis: *Are users with low system edit histories more likely to trigger high volatility anomaly flags?*
 
 ---
 
@@ -87,34 +88,27 @@ docker compose up --build
 
 ---
 
+## 🔍 Database Inspection & Queries
+
+If you use **DBeaver** or a built-in IDE console connection panel, configure your link credentials to target `localhost` on Port `5432` with User `postgres` and Password `your_secure_password` to query the data:
+
+```sql
+-- View the latest anomalies caught by the River ML engine
+SELECT page_title, user_name, bytes_changed, anomaly_score, edit_comment, ingested_at
+FROM wikipedia_raw
+WHERE anomaly_score > 0.75
+ORDER BY id DESC LIMIT 10;
+```
+
+---
+
 ## 🛠️ Infrastructure Operations & Housekeeping
 
 * **To clear the python internal runtime cache folders:**
   ```cmd
   del /s /q __pycache__ *.pyc
   ```
-* **To stop your database completely when you are done working:**
+* **To stop your database and broker queues completely when you are done working:**
   ```bash
   docker compose down
   ```
-
-## 💼 Future Scope : The Business Analytics Use Cases We Can Solve
-
-By pulling in richer fields, our Polars analytics layer and River AI layer can solve three distinct enterprise problem domains:
-
-1. Bad-Actor Risk Profiling (Trust & Safety Analytics)
-
-• Business Problem: Attackers open sleeper accounts to systematically inject spam links, hidden advertising, or coordinate vandalism across a site.
-• The Rich Dimensions: user_registration_dt (Account age) and user_edit_count (Historical account experience level).
-• The Analytic Metric: New accounts (under 24 hours old) making significant edits have a 10x higher operational risk score.
-
-2. Intent Classification via NLP (Product Operations Analytics)
-
-• Business Problem: Understanding why users are modifying items in real time to categorize platform traffic variations.
-• The Rich Dimension: edit_comment (The text summary explaining the change reason).
-• The Analytic Metric: Polars will extract structural intent categories (e.g., matching keywords like "fixed typo", "reverted vandalism", "added reference") to profile total platform modification motivations.
-
-3. Content Integrity Auditing (Version Control Analytics)
-
-• Business Problem: Tracking sequence lineage to handle rollsbacks, data drift audits, and structural edit patterns.
-• The Rich Dimensions: revision_id, parent_revision_id, and is_minor.
