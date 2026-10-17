@@ -98,7 +98,7 @@ docker compose up --build
   docker compose down
   ```
 
-💼 Future Scope : The Business Analytics Use Cases We Can Solve
+## 💼 Future Scope : The Business Analytics Use Cases We Can Solve
 
 By pulling in richer fields, our Polars analytics layer and River AI layer can solve three distinct enterprise problem domains:
 
