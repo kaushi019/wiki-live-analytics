@@ -1,4 +1,4 @@
-# 📡 Wikipedia Live Stream AI Anomaly Monitor (Dockerized Kafka Stack)
+# 📡 Wikipedia Live Stream AI Anomaly Monitor
 
 A production-grade, multi-tier enterprise data engineering streaming pipeline. This application captures live global English Wikipedia article logs via Server-Sent Events (SSE), brokers data payloads asynchronously inside **Apache Kafka queues**, applies incremental online anomaly detection algorithms with **River ML**, aggregates metrics in real time via **Polars DataFrames**, stores structured results inside **PostgreSQL**, and serves an interactive web monitoring dashboard with **Streamlit**.
 
