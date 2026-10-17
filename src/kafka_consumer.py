@@ -4,7 +4,7 @@ import sys
 import json
 import time
 
-# PATH INJECTION: Forces Python to recognize the root project directory
+# 🚀 PATH INJECTION: Forces Python to recognize the root project directory
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from kafka import KafkaConsumer
@@ -44,7 +44,7 @@ def run_consumer():
             print("✅ Consumer linked to Kafka cluster broker successfully!")
             break
         except Exception as e:
-            print(f"⚠️ Kafka Broker not fully ready yet ({e}). Re-trying in 3 seconds...")
+            print(f"❌ Kafka Broker not fully ready yet ({e}). Re-trying in 3 seconds...")
             time.sleep(3)
             
     batch = []
@@ -60,10 +60,14 @@ def run_consumer():
             bytes_changed = abs(length_new - length_old)
             is_bot = change.get("bot", False)
             
-            anomaly_score = detector.learn_and_score(bytes_changed, is_bot)
+            # 🧠 EXTRACTION OF ADVANCED USER EXPERIENCE AND LINEAGE METADATA DIMENSIONS
+            is_minor = change.get("minor", False)
+            user_edit_count = int(change.get("user_edit_count") or 0)
+            
+            # 🎯 FIX: Updated multi-dimensional AI scoring signature matching ml_model.py
+            anomaly_score = detector.learn_and_score(bytes_changed, is_bot, user_edit_count, is_minor)
             revision = change.get("revision", {})
             
-            # 🧠 EXTRACTION OF ADVANCED USER EXPERIENCE AND LINEAGE METADATA DIMENSIONS
             record = {
                 "timestamp": str(change.get("timestamp")),
                 "page_title": change.get("title"),
@@ -72,8 +76,6 @@ def run_consumer():
                 "bytes_changed": int(bytes_changed),
                 "edit_type": change.get("type", "unknown"),
                 "anomaly_score": float(anomaly_score),
-                
-                # Dynamic new business columns
                 "edit_comment": change.get("comment", ""),
                 "is_minor": change.get("minor", False),
                 "revision_id": revision.get("new"),
